@@ -4,6 +4,7 @@ package fusefrontend
 // FUSE operations on paths
 
 import (
+	"fmt"
 	"os"
 	"sync"
 	"syscall"
@@ -148,12 +149,14 @@ func (fs *FS) Open(path string, flags uint32, context *fuse.Context) (fuseFile n
 	// Symlink-safe open
 	dirfd, cName, err := fs.openBackingDir(path)
 	if err != nil {
+		fmt.Printf("Open %q: openBackingDir returned %v\n", path, err)
 		return nil, fuse.ToStatus(err)
 	}
 	defer syscall.Close(dirfd)
 	fd, err := syscallcompat.Openat(dirfd, cName, newFlags, 0)
 	// Handle a few specific errors
 	if err != nil {
+		fmt.Printf("Open %q: Openat returned %v\n", path, err)
 		if err == syscall.EMFILE {
 			var lim syscall.Rlimit
 			syscall.Getrlimit(syscall.RLIMIT_NOFILE, &lim)
@@ -238,6 +241,7 @@ func (fs *FS) Create(path string, flags uint32, mode uint32, context *fuse.Conte
 	newFlags := fs.mangleOpenFlags(flags)
 	dirfd, cName, err := fs.openBackingDir(path)
 	if err != nil {
+		fmt.Printf("Create %q: openBackingDir returned %v\n", path, err)
 		return nil, fuse.ToStatus(err)
 	}
 	defer syscall.Close(dirfd)
@@ -263,6 +267,7 @@ func (fs *FS) Create(path string, flags uint32, mode uint32, context *fuse.Conte
 		fd, err = syscallcompat.OpenatUser(dirfd, cName, newFlags|syscall.O_CREAT|syscall.O_EXCL, mode, context)
 	}
 	if err != nil {
+		fmt.Printf("Create %q: OpenatUser returned %v\n", path, err)
 		// xfstests generic/488 triggers this
 		if err == syscall.EMFILE {
 			var lim syscall.Rlimit
